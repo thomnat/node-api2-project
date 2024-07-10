@@ -72,30 +72,38 @@ router.post("/", (req, res) => {
 
 // | 4 | PUT    | /api/posts/:id          | Updates the post with the specified id using data from the request body and **returns the modified document**, not the original |
 router.put("/:id", (req, res) => {
-  const changes = req.body;
-  Post.update(req.params.id, changes)
-    .then((post) => {
-      if (!req.params.id) {
-        res
-          .status(404)
-          .json({ message: "The post with the specified ID does not exist" });
-      } else {
-        if (!req.body.title || !req.body.contents) {
-          res
-            .status(400)
-            .json({
-              message: "Please provide title and contents for the post",
-            });
+  const {title, contents} = req.body
+  if (!title || !contents) {
+    res.status(400).json({ message: "Please provide title and contents for the post"})
+  } else {
+    Post.findById(req.params.id)
+      .then( stuff => {
+        if (!stuff) {
+          res.status(404).json({
+            message: "The post with the specified ID does not exist",
+          })
+        } else {
+          return Post.update(req.params.id, req.body)
         }
-        res.status(200).json(post);
-      }
-    })
-    .catch((error) => {
-      console.log(error);
-      res
-        .status(500)
-        .json({ message: "The post information could not be modified" });
-    });
+      })
+      .then(data => {
+        if (data) {
+          return Post.findById(req.params.id)
+        }
+      })
+      .then(post => {
+        if (post) {
+          res.json(post)
+        }
+      })
+      .catch(err => {
+        res.status(500).json({ 
+          message: "The posts information could not be retrieved",
+          err: err.message,
+          stack: err.stack,
+        })
+      })
+  }
 });
 
 // | 5 | DELETE | /api/posts/:id          | Removes the post with the specified id and returns the **deleted post object**                                                  |
